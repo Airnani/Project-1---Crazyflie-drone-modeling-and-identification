@@ -7,22 +7,22 @@ close;clear all; clc;
 csvfilename = '2024-04-04_log07.csv';
 array = dlmread(csvfilename,',',1,0);
 
-time = array(:,1)'*1e-3;
+tempo = array(:,1)'*1e-3;
 pos = array(:,2:4)';
 vel = array(:,5:7)';
 lbd = array(:,8:10)'*pi/180;
 om = array(:,11:13)'*pi/180;
 pos_ref = array(:,14:16)';
 yaw_ref = array(:,17)';
-motors = array(:,18:21)';
+motores = array(:,18:21)';
 
 % Converter informação
-t = time - time(1);
+t = tempo - tempo(1);
 x = [pos;vel;lbd;om];
 x_ref = [pos_ref;0*vel;lbd*0;om*0];
 x_ref(9,:) = yaw_ref;
 uint16_max = 2^16;
-u = motors/uint16_max;
+u = motores/uint16_max;
 
 % plot dados
 initPlots;
@@ -123,3 +123,37 @@ fprintf('\n Qualidade do Ajuste\n');
 fprintf('Fit para Px: %.2f%%\n', fit_px);
 fprintf('Fit para Py: %.2f%%\n', fit_py);
 fprintf('Fit para Pz: %.2f%%\n', fit_pz);
+
+%% 6 IDENTIFICAÇÃO DE ORDEM SUPERIOR (eixo X)
+% Configuração: 6 polos e 5 zeros
+np_high = 6; 
+nz_high = 5;
+
+fprintf('\n--- Estimando Modelo de 6ª Ordem para Eixo X ---\n');
+sys_px_6p5z = tfest(data_px, np_high, nz_high);
+
+% COMPARAÇÃO DIRETA DE PERFORMANCE
+figure('Name', 'Comparação: 2 Polos vs 6 Polos (Eixo X)', 'Color', [1 1 1]);
+
+[~, fit_2p] = compare(data_px, sys_px);
+[~, fit_6p] = compare(data_px, sys_px_6p5z);
+
+% Plot de comparação
+compare(data_px, sys_px, sys_px_6p5z);
+grid on;
+legend('Dados Experimentais', ...
+       ['Original (2 Polos) - Fit: ' num2str(fit_2p, '%.2f') '%'], ...
+       ['Superior (6 Polos, 5 Zeros) - Fit: ' num2str(fit_6p, '%.2f') '%'], ...
+       'Location', 'best');
+
+title('Figura 23: Impacto da Ordem do Modelo na Fidelidade dos Dados (Eixo X)');
+ylabel('Posição p_x [m]');
+
+% RESULTADOS
+fprintf('\nResultados Comparativos\n');
+fprintf('Ajuste Modelo 2ª Ordem: %.2f%%\n', fit_2p);
+fprintf('Ajuste Modelo 6ª Ordem: %.2f%%\n', fit_6p);
+fprintf('Melhoria na Identificação: %.2f%%\n', fit_6p - fit_2p);
+
+fprintf('\nNova Função de Transferência (Px - 6ª Ordem):\n');
+display(tf(sys_px_6p5z));
