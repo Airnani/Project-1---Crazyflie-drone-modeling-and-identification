@@ -32,7 +32,73 @@ vehicle3d_ref_show_data(t,x,u,x_ref);
 u_id = lbd(1,:)';
 y_id = pos(2,:)';
 
-%% 3 IDENTIFICAÇÃO AUTOMÁTICA E STEP RESPONSE
+%% IDENTIFICAÇÃO DOS TRÊS MODOS (px, py, pz)
+
+% Configuração de cores para bater com o teu relatório
+color_px = [0 0.8 0.8]; % Ciano
+color_py = [0.8 0 0.8]; % Magenta
+color_pz = [1 0 0];     % Vermelho
+
+%% IDENTIFICAÇÃO MODO Px (Entrada: Theta, Saída: Px)
+u_px = lbd(2,:)'; % Pitch (theta)
+y_px = pos(1,:)'; 
+t_id = t';
+
+v_model_x = cumtrapz(t_id, u_px);
+p_model_x = cumtrapz(t_id, v_model_x);
+K_px = p_model_x \ y_px; 
+
+figure('Name', 'Figura 14 - Identificação px');
+subplot(2,1,1);
+plot(t_id, y_px, 'Color', color_px, 'LineWidth', 1.5); hold on;
+plot(t_id, K_px * p_model_x, 'g--', 'LineWidth', 1.2);
+title('Entrada \theta e saída p_x'); ylabel('p_x [m]'); grid on;
+legend('Experimental', 'Modelo');
+subplot(2,1,2);
+plot(t_id, u_px, 'Color', color_px); ylabel('\theta [rad]'); xlabel('Time [s]'); grid on;
+
+%% IDENTIFICAÇÃO MODO Py (Entrada: Phi, Saída: Py)
+u_py = lbd(1,:)'; % Roll (phi)
+y_py = pos(2,:)';
+
+v_model_y = cumtrapz(t_id, u_py);
+p_model_y = cumtrapz(t_id, v_model_y);
+K_py = p_model_y \ y_py;
+
+figure('Name', 'Figura 15 - Identificação py');
+subplot(2,1,1);
+plot(t_id, y_py, 'Color', color_py, 'LineWidth', 1.5); hold on;
+plot(t_id, K_py * p_model_y, 'g--', 'LineWidth', 1.2);
+title('Entrada \phi e saída p_y'); ylabel('p_y [m]'); grid on;
+legend('Experimental', 'Modelo');
+subplot(2,1,2);
+plot(t_id, u_py, 'Color', color_py); ylabel('\phi [rad]'); xlabel('Time [s]'); grid on;
+
+%% IDENTIFICAÇÃO MODO Pz (Entrada: Thrust, Saída: Pz)
+% Nota: Usamos u(1,:) que no código é o motor/max (comando de empuxo)
+u_pz = u(1,:)'; 
+y_pz = pos(3,:)';
+
+v_model_z = cumtrapz(t_id, u_pz);
+p_model_z = cumtrapz(t_id, v_model_z);
+K_pz = p_model_z \ y_pz;
+
+figure('Name', 'Figura 16 - Identificação pz');
+subplot(2,1,1);
+plot(t_id, y_pz, 'Color', color_pz, 'LineWidth', 1.5); hold on;
+plot(t_id, K_pz * p_model_z, 'g--', 'LineWidth', 1.2);
+title('Entrada T e saída p_z'); ylabel('p_z [m]'); grid on;
+legend('Experimental', 'Modelo');
+subplot(2,1,2);
+plot(t_id, u_pz, 'Color', color_pz); ylabel('T [unit]'); xlabel('Time [s]'); grid on;
+
+%% DISPLAY DOS RESULTADOS
+fprintf('\n--- Ganhos Identificados ---\n');
+fprintf('K (px/theta): %.4f\n', K_px); 
+fprintf('K (py/phi):   %.4f\n', K_py);
+fprintf('K (pz/T):     %.4f\n', K_pz);
+
+%% IDENTIFICAÇÃO AUTOMÁTICA E STEP RESPONSE
 
 % 1 Configuração de Dados e Amostragem
 Ts = mean(diff(t)); 
@@ -50,8 +116,7 @@ sys_px = tfest(data_px, np, nz);
 sys_py = tfest(data_py, np, nz);
 sys_pz = tfest(data_pz, np, nz);
 
-%% 3. PLOT DAS STEP RESPONSES COM EIXOS ADEQUADOS
-
+%% PLOT DAS STEP RESPONSES COM EIXOS ADEQUADOS
 figure('Name', 'Identificação Experimental - Step Responses', 'Color', [1 1 1]);
 
 % Eixo X (Px)
@@ -82,13 +147,13 @@ ylabel('Amplitude (p_z)');
 xlabel('Time (seconds)');
 xlim([0 t_final_z]);
 
-%% 4 RESULTADOS
+%% RESULTADOS
 fprintf('\n Funções de Transferência Calculadas\n');
 fprintf('Modo Px:'); display(tf(sys_px));
 fprintf('Modo Py:'); display(tf(sys_py));
 fprintf('Modo Pz:'); display(tf(sys_pz));
 
-%% 5 COMPARAÇÃO DE OUTPUTS MODELO COM EXPERIMENTAL
+%% COMPARAÇÃO DE OUTPUTS MODELO COM EXPERIMENTAL
 figure('Name', 'Comparação: Medido vs Simulado', 'Color', [1 1 1]);
 
 % Comparação Eixo X (G_theta,px)
@@ -113,7 +178,7 @@ title('Figura 22: Comparação de G_{T,p_z}(s)');
 ylabel('p_z [m]');
 xlabel('Time (seconds)');
 
-%% 5 ANÁLISE DE QUALIDADE DO AJUSTE
+%% ANÁLISE DE QUALIDADE DO AJUSTE
 
 [~, fit_px] = compare(data_px, sys_px);
 [~, fit_py] = compare(data_py, sys_py);
@@ -124,7 +189,7 @@ fprintf('Fit para Px: %.2f%%\n', fit_px);
 fprintf('Fit para Py: %.2f%%\n', fit_py);
 fprintf('Fit para Pz: %.2f%%\n', fit_pz);
 
-%% 6 IDENTIFICAÇÃO DE ORDEM SUPERIOR (eixo X)
+%% IDENTIFICAÇÃO DE ORDEM SUPERIOR (eixo X)
 % Configuração: 6 polos e 5 zeros
 np_high = 6; 
 nz_high = 5;
